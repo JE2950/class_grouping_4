@@ -121,20 +121,21 @@ if uploaded:
         st.subheader(f"Class {i+1} – Visual Breakdown")
 
         genders = [student_info[n]["Gender"] for n in group if n in student_info]
-        plt.figure(figsize=(2, 2))
+        plt.figure(figsize=(1.5, 1.5))
         plt.pie([genders.count("M"), genders.count("F")], labels=["M", "F"], autopct="%1.1f%%")
         plt.title("Gender")
         st.pyplot(plt.gcf())
         plt.clf()
 
         sens = [student_info[n]["SEN"] for n in group if n in student_info]
-        plt.figure(figsize=(2, 2))
+        plt.figure(figsize=(1.5, 1.5))
         plt.pie([sens.count("Yes"), sens.count("No")], labels=["SEN", "No SEN"], autopct="%1.1f%%")
         plt.title("SEN")
         st.pyplot(plt.gcf())
         plt.clf()
 
-    st.header("🔍 Friendship Placement Summary")
+    st.subheader("🔍 Friendship Placement Summary")
+    # Visualisation will now appear before pie charts
     visual_data = []
     for _, row in df.iterrows():
         name = row["Name"]
