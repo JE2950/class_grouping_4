@@ -22,6 +22,7 @@ if uploaded:
     st.success("File uploaded!")
 
     students = df["Name"].tolist()
+    max_class_size = 18
     classes = [[] for _ in range(4)]
 
     friend_map = {
@@ -39,6 +40,8 @@ if uploaded:
     unplaced = []
 
     def can_place(student, group):
+        if len(group) >= max_class_size:
+            return False
         for peer in group:
             if peer in avoid_map[student] or student in avoid_map.get(peer, []):
                 return False
@@ -95,34 +98,16 @@ if uploaded:
 
     st.header("📋 Class Lists")
     results = []
-    for i, group in enumerate(classes):
-        st.subheader(f"Class {i+1} ({len(group)} pupils)")
-        st.write(group)
-        for name in group:
-            results.append({"Name": name, "Class": f"Class {i+1}"})
+    transposed = {f"Class {i+1}": group for i, group in enumerate(classes)}
+    transposed["Unplaced"] = unplaced
 
-        # Gender pie chart
-        genders = [student_info[n]["Gender"] for n in group if n in student_info]
-        plt.figure(figsize=(2.5, 2.5))
-        plt.title(f"Class {i+1} – Gender")
-        plt.pie([genders.count("M"), genders.count("F")], labels=["M", "F"], autopct="%1.1f%%")
-        st.pyplot(plt.gcf())
-        plt.clf()
+    max_rows = max(len(v) for v in transposed.values())
+    export_data = {
+        key: v + [""] * (max_rows - len(v)) for key, v in transposed.items()
+    }
+    export_df = pd.DataFrame(export_data)
+    st.dataframe(export_df)
 
-        # SEN pie chart
-        sens = [student_info[n]["SEN"] for n in group if n in student_info]
-        plt.figure(figsize=(2.5, 2.5))
-        plt.title(f"Class {i+1} – SEN")
-        plt.pie([sens.count("Yes"), sens.count("No")], labels=["SEN", "No SEN"], autopct="%1.1f%%")
-        st.pyplot(plt.gcf())
-        plt.clf()
-
-    if unplaced:
-        st.warning(f"⚠️ {len(unplaced)} student(s) could not be placed with at least one friend.")
-        st.subheader("🧍‍♂️ Unplaced Students")
-        st.write(unplaced)
-
-    export_df = pd.DataFrame(results)
     st.download_button("📥 Download CSV", export_df.to_csv(index=False).encode("utf-8"), "assignments.csv")
 
     excel_buffer = io.BytesIO()
@@ -132,17 +117,36 @@ if uploaded:
     st.download_button("📥 Download Excel", data=excel_buffer, file_name="assignments.xlsx",
                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
+    for i, group in enumerate(classes):
+        st.subheader(f"Class {i+1} – Visual Breakdown")
+
+        genders = [student_info[n]["Gender"] for n in group if n in student_info]
+        plt.figure(figsize=(2, 2))
+        plt.pie([genders.count("M"), genders.count("F")], labels=["M", "F"], autopct="%1.1f%%")
+        plt.title("Gender")
+        st.pyplot(plt.gcf())
+        plt.clf()
+
+        sens = [student_info[n]["SEN"] for n in group if n in student_info]
+        plt.figure(figsize=(2, 2))
+        plt.pie([sens.count("Yes"), sens.count("No")], labels=["SEN", "No SEN"], autopct="%1.1f%%")
+        plt.title("SEN")
+        st.pyplot(plt.gcf())
+        plt.clf()
+
     st.header("🔍 Friendship Placement Summary")
     visual_data = []
     for _, row in df.iterrows():
         name = row["Name"]
         row_class = name_to_class.get(name, "Unplaced")
         summary = {"Name": name, "Class": row_class}
+        class_group = classes[row_class] if isinstance(row_class, int) else []
+
         for i in range(1, 6):
             f = row[f"Friend{i}"]
             if not f:
                 summary[f"Friend{i}"] = ""
-            elif name_to_class.get(f) == row_class:
+            elif f in class_group:
                 summary[f"Friend{i}"] = f"✅ {f}"
             else:
                 summary[f"Friend{i}"] = f"❌ {f}"
